@@ -6,7 +6,6 @@ from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.utils import timezone
-from django import forms
 from django.contrib import messages
 
 # View untuk halaman utama
@@ -47,15 +46,23 @@ def deleteData(request):
 @csrf_exempt
 def register(request):
     if request.method == 'POST':
-        username = "johan"
-        password = "amiracing1234"
-        email = "johan@mail.com"
+        try:
+            data = json.loads(request.body)
+            username = data.get("username")
+            password = data.get("password")
+            email = data.get("email")
 
-        if User.objects.filter(username=username).exists():
-            return JsonResponse({"error": "Username already exists"}, status=400)
+            if not username or not password or not email:
+                return JsonResponse({"error": "All fields are required"}, status=400)
 
-        User.objects.create_user(username=username, password=password, email=email)
-        return JsonResponse({"message": "User registered successfully"}, status=201)
+            if User.objects.filter(username=username).exists():
+                return JsonResponse({"error": "Username already exists"}, status=400)
+
+            User.objects.create_user(username=username, password=password, email=email)
+            return JsonResponse({"message": "User registered successfully"}, status=201)
+        
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data"}, status=400)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
 
@@ -71,6 +78,27 @@ def list_comments(request, content_id):
     # Serialisasi data komentar
     data = serializers.serialize("json", comments)
     return JsonResponse(data, safe=False)
+
+# View untuk moderasi komentar
+@csrf_exempt
+def moderate_comment(request, content_id, comment_id):
+    try:
+        comment = Comment.objects.get(id=comment_id, content_id=content_id)
+    except Comment.DoesNotExist:
+        return JsonResponse({"error": "Comment not found"}, status=404)
+
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        is_approved = data.get('is_approved', None)
+        
+        if is_approved is None:
+            return JsonResponse({"error": "is_approved field is required"}, status=400)
+        
+        comment.is_approved = is_approved
+        comment.save()
+        return JsonResponse({"message": "Comment updated successfully"}, status=200)
+
+    return JsonResponse({"error": "Invalid request method"}, status=405)
 
 # View untuk menampilkan statistik aktivitas pengguna (User Activity Dashboard)
 def user_activity_dashboard(request, user_id):
@@ -94,22 +122,33 @@ def list_course_contents(request, course_id):
 @csrf_exempt
 def batch_enroll(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
-        course_id = data.get('course_id')
-        user_ids = data.get('user_ids')  # Expecting list of user IDsA
+        try:
+            data = json.loads(request.body)
+            course_id = data.get('course_id')
+            user_ids = data.get('user_ids')  # Expecting list of user IDs
+            
+            if not course_id or not user_ids:
+                return JsonResponse({"error": "Course ID and user IDs are required"}, status=400)
 
-        course = Course.objects.get(id=course_id)
+            course = Course.objects.get(id=course_id)
 
-        # Cek apakah kursus sudah penuh
-        if CourseMember.objects.filter(course_id=course).count() + len(user_ids) > course.max_students:
-            return JsonResponse({"error": "Not enough slots available for all students"}, status=400)
+            # Check if the course is already full
+            if CourseMember.objects.filter(course_id=course).count() + len(user_ids) > course.max_students:
+                return JsonResponse({"error": "Not enough slots available for all students"}, status=400)
 
-        # Mendaftarkan setiap user ke course
-        for user_id in user_ids:
-            user = User.objects.get(id=user_id)
-            if not CourseMember.objects.filter(course_id=course, user_id=user).exists():
-                CourseMember.objects.create(course_id=course, user_id=user)
+            # Enroll students
+            for user_id in user_ids:
+                user = User.objects.get(id=user_id)
+                if not CourseMember.objects.filter(course_id=course, user_id=user).exists():
+                    CourseMember.objects.create(course_id=course, user_id=user)
 
-        return JsonResponse({"message": "Students enrolled successfully"}, status=201)
+            return JsonResponse({"message": "Students enrolled successfully"}, status=201)
+        
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data"}, status=400)
+        except Course.DoesNotExist:
+            return JsonResponse({"error": "Course not found"}, status=404)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found"}, status=404)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
