@@ -41,9 +41,9 @@ def deleteData(request):
 @csrf_exempt
 def register(request):
     if request.method == 'POST':
-        username = ""
-        password = ""
-        email = ""
+        username = "johan"
+        password = "amiracing1234"
+        email = "johan@mail.com"
 
         if User.objects.filter(username=username).exists():
             return JsonResponse({"error": "Username already exists"}, status=400)
