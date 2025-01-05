@@ -11,7 +11,7 @@ class Course(models.Model):
     created_at = models.DateTimeField("Dibuat pada", auto_now_add=True)
     updated_at = models.DateTimeField("Diperbarui pada", auto_now=True)
 
-    def _str_(self):
+    def __str__(self):
         return self.name
     
     class Meta:
@@ -42,8 +42,9 @@ class CourseMember(models.Model):
         verbose_name = "Subscriber Matkul"
         verbose_name_plural = "Subscriber Matkul"
 
-    def _str_(self) -> str:
-        return f"{self.id} {self.course_id} : {self.user_id}"
+    def __str__(self) -> str:
+        return f"{self.course_id.name} : {self.user_id.username}"
+
 
 class CourseContent(models.Model):
     name = models.CharField(max_length=255)
@@ -59,8 +60,9 @@ class CourseContent(models.Model):
         verbose_name = "Konten Matkul"
         verbose_name_plural = "Konten Matkul"
 
-    def _str_(self) -> str:
-        return f'{self.course_id} {self.name}'
+    def __str__(self) -> str:
+        return f'{self.course_id.name} - {self.name}'
+
 
 class Comment(models.Model):
     content_id = models.ForeignKey(CourseContent, verbose_name="konten", on_delete=models.CASCADE)
@@ -74,8 +76,9 @@ class Comment(models.Model):
         verbose_name = "Komentar"
         verbose_name_plural = "Komentar"
 
-    def _str_(self) -> str:
-        return f"Komen: {self.member_id.user_id.username} - {self.comment}"
+    def __str__(self) -> str:
+        return f"Komen oleh {self.member_id.user_id.username}: {self.comment}"
+
 
 class ContentCompletion(models.Model):
     content = models.ForeignKey(CourseContent, on_delete=models.CASCADE)
@@ -85,7 +88,7 @@ class ContentCompletion(models.Model):
     class Meta:
         unique_together = ('content', 'user')
 
-    def _str_(self):
+    def __str__(self):
         return f'{self.user.username} completed {self.content.name}'
 
 User.add_to_class('get_course_stats', lambda self: {

@@ -8,10 +8,12 @@ from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 
+# Form untuk Batch Enroll
 class BatchEnrollForm(forms.Form):
     course = forms.ModelChoiceField(queryset=Course.objects.all(), label="Course")
     students = forms.ModelMultipleChoiceField(queryset=User.objects.filter(is_staff=False), label="Students")
 
+# View untuk Batch Enroll
 def batch_enroll(request):
     if request.method == 'POST':
         form = BatchEnrollForm(request.POST)
@@ -26,6 +28,7 @@ def batch_enroll(request):
         form = BatchEnrollForm()
     return render(request, 'admin/batch_enroll.html', {'form': form})
 
+# Kelas Admin Kustom
 class MyAdminSite(admin.AdminSite):
     site_header = 'LMS Administration'
 
@@ -38,38 +41,63 @@ class MyAdminSite(admin.AdminSite):
 
 admin_site = MyAdminSite(name='myadmin')
 
+# Course Admin
 @admin.register(Course, site=admin_site)
 class CourseAdmin(admin.ModelAdmin):
     list_display = ["name", "price", "description", "teacher", 'created_at']
     list_filter = ["teacher"]
-    search_fields = ["name", "description"]
+    search_fields = ["name", "description", "teacher__username"]
     readonly_fields = ["created_at", "updated_at"]
     fields = ["name", "description", "price", "image", "teacher", "created_at", "updated_at"]
 
+# CourseMember Admin
 @admin.register(CourseMember, site=admin_site)
 class CourseMemberAdmin(admin.ModelAdmin):
-    list_display = ["course_id", "user_id", "roles", "created_at"]
+    list_display = ["course_name", "user_name", "roles", "created_at"]
     list_filter = ["course_id", "user_id", "roles"]
-    search_fields = ["course_id_name", "user_id_username"]
+    search_fields = ["course_id__name", "user_id__username"]
     readonly_fields = ["created_at", "updated_at"]
     fields = ["course_id", "user_id", "roles", "created_at", "updated_at"]
 
+    def course_name(self, obj):
+        return obj.course_id.name
+    course_name.admin_order_field = 'course_id__name'
+
+    def user_name(self, obj):
+        return obj.user_id.username
+    user_name.admin_order_field = 'user_id__username'
+
+# CourseContent Admin
 @admin.register(CourseContent, site=admin_site)
 class CourseContentAdmin(admin.ModelAdmin):
-    list_display = ["name", "course_id", "release_date", "created_at"]
+    list_display = ["name", "course_name", "release_date", "created_at"]
     list_filter = ["course_id"]
     search_fields = ["name", "course_id__name"]
     readonly_fields = ["created_at", "updated_at"]
     fields = ["name", "description", "file_attachment", "course_id", "parent_id", "release_date", "created_at", "updated_at"]
 
+    def course_name(self, obj):
+        return obj.course_id.name
+    course_name.admin_order_field = 'course_id__name'
+
+# Comment Admin
 @admin.register(Comment, site=admin_site)
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ["content_id", "member_id", "comment", "is_approved", "created_at"]
+    list_display = ["content_name", "user_name", "comment", "is_approved", "created_at"]
     list_filter = ["content_id", "member_id", "is_approved"]
-    search_fields = ["comment", "member_id_user_id_username"]
+    search_fields = ["comment", "member_id__user_id__username"]
     readonly_fields = ["created_at", "updated_at"]
     fields = ["content_id", "member_id", "comment", "is_approved", "created_at", "updated_at"]
 
+    def content_name(self, obj):
+        return obj.content_id.name
+    content_name.admin_order_field = 'content_id__name'
+
+    def user_name(self, obj):
+        return obj.member_id.user_id.username
+    user_name.admin_order_field = 'member_id__user_id__username'
+
+# Custom User Admin
 class CustomUserAdmin(BaseUserAdmin):
     add_form = UserCreationForm
     form = UserChangeForm
@@ -91,4 +119,5 @@ class CustomUserAdmin(BaseUserAdmin):
         }),
     )
 
+# Register Custom User Admin
 admin_site.register(User, CustomUserAdmin)
