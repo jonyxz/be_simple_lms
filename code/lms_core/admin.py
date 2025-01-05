@@ -7,6 +7,7 @@ from lms_core.models import Course, CourseMember, CourseContent, Comment
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
+from django.contrib.auth.decorators import user_passes_test
 
 # Form untuk Batch Enroll
 class BatchEnrollForm(forms.Form):
@@ -14,6 +15,7 @@ class BatchEnrollForm(forms.Form):
     students = forms.ModelMultipleChoiceField(queryset=User.objects.filter(is_staff=False), label="Students")
 
 # View untuk Batch Enroll
+@user_passes_test(lambda u: u.is_staff)
 def batch_enroll(request):
     if request.method == 'POST':
         form = BatchEnrollForm(request.POST)
@@ -21,9 +23,14 @@ def batch_enroll(request):
             course = form.cleaned_data['course']
             students = form.cleaned_data['students']
             for student in students:
-                CourseMember.objects.get_or_create(course_id=course, user_id=student)
+                if not CourseMember.objects.filter(course_id=course, user_id=student).exists():
+                    CourseMember.objects.get_or_create(course_id=course, user_id=student)
+                else:
+                    messages.warning(request, f"{student.username} is already enrolled.")
             messages.success(request, "Students enrolled successfully")
             return redirect('admin:index')
+        else:
+            messages.error(request, "There was an issue with the form.")
     else:
         form = BatchEnrollForm()
     return render(request, 'admin/batch_enroll.html', {'form': form})
