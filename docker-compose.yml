@@ -10,7 +10,7 @@ services:
     command: python manage.py runserver 0.0.0.0:8000
   postgres:
     container_name: prepare_db
-    image: postgres:16
+    image: postgres:17.0
     environment:
       - POSTGRES_DB=simple_lms
       - POSTGRES_USER=simple_user
