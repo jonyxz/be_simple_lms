@@ -8,6 +8,7 @@ import json
 from django.utils import timezone
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.contrib.auth.decorators import login_required
 
 # View untuk halaman utama
 def index(request):
@@ -170,3 +171,24 @@ def list_course_contents(request, course_id):
             for content in contents if content.is_available()
         ]
     })
+    
+@csrf_exempt
+def enroll_student(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        course_id = data.get('course_id')
+        user_id = data.get('user_id')
+
+        course = Course.objects.get(id=course_id)
+        user = User.objects.get(id=user_id)
+
+        if CourseMember.objects.filter(course_id=course, user_id=user).exists():
+            return JsonResponse({"error": "Student is already enrolled in this course"}, status=400)
+
+        if CourseMember.objects.filter(course_id=course).count() >= course.max_students:
+            return JsonResponse({"error": "Course is full"}, status=400)
+
+        CourseMember.objects.create(course_id=course, user_id=user)
+        return JsonResponse({"message": "Student enrolled successfully"}, status=201)
+
+    return JsonResponse({"error": "Invalid request method"}, status=405)

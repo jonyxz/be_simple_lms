@@ -9,7 +9,7 @@ class Course(models.Model):
     price = models.IntegerField("Harga")
     image = models.ImageField("Gambar", upload_to="course", blank=True, null=True)
     teacher = models.ForeignKey(User, verbose_name="Pengajar", on_delete=models.RESTRICT)
-    max_students = models.IntegerField("Jumlah Maksimal Siswa", default=30)  # Batasan kuota
+    max_students = models.IntegerField("Jumlah Maksimal Siswa", default=30)  
     created_at = models.DateTimeField("Dibuat pada", auto_now_add=True)
     updated_at = models.DateTimeField("Diperbarui pada", auto_now=True)
 
@@ -33,6 +33,8 @@ class Course(models.Model):
 
     def is_member(self, user):
         return CourseMember.objects.filter(course_id=self, user_id=user).exists()
+    
+ROLE_OPTIONS = [('std', "Siswa"), ('ast', "Asisten")]
 
 class CourseMember(models.Model):
     course_id = models.ForeignKey(Course, verbose_name="matkul", on_delete=models.RESTRICT)
