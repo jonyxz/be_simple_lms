@@ -151,3 +151,22 @@ def batch_enroll(request):
             return JsonResponse({"error": "Invalid JSON data"}, status=400)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
+
+def list_course_contents(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+    contents = CourseContent.objects.filter(
+        course=course, scheduled_start_time__lte=timezone.now()
+    ).order_by('scheduled_start_time')
+
+    return JsonResponse({
+        "contents": [
+            {
+                "name": content.name,
+                "description": content.description,
+                "file_attachment": content.file_attachment.url if content.file_attachment else None,
+                "start_time": content.scheduled_start_time,
+                "end_time": content.scheduled_end_time,
+            }
+            for content in contents if content.is_available()
+        ]
+    })

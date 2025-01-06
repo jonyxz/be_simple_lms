@@ -82,11 +82,11 @@ class CourseMemberAdmin(admin.ModelAdmin):
 # CourseContent Admin
 @admin.register(CourseContent, site=admin_site)
 class CourseContentAdmin(admin.ModelAdmin):
-    list_display = ["name", "course_name", "release_date", "scheduled_start_time", "scheduled_end_time", "created_at"]
+    list_display = ["name", "course_name", "scheduled_start_time", "scheduled_end_time", "created_at"]
     list_filter = ["course_id"]
     search_fields = ["name", "course_id__name"]
     readonly_fields = ["created_at", "updated_at"]
-    fields = ["name", "description", "file_attachment", "course_id", "parent_id", "release_date", "scheduled_start_time", "scheduled_end_time", "created_at", "updated_at"]
+    fields = ["name", "description", "file_attachment", "course_id", "parent_id", "scheduled_start_time", "scheduled_end_time", "created_at", "updated_at"]
 
     def course_name(self, obj):
         return obj.course_id.name

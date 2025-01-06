@@ -57,28 +57,36 @@ class CourseMember(models.Model):
             raise ValidationError("Course has reached its maximum enrollment.")
 
 class CourseContent(models.Model):
-    name = models.CharField(max_length=255)
-    description = models.TextField()
-    file_attachment = models.FileField("File", null=True, blank=True)
-    course_id = models.ForeignKey(Course, verbose_name="matkul", on_delete=models.RESTRICT)
-    parent_id = models.ForeignKey("self", verbose_name="induk", on_delete=models.RESTRICT, null=True, blank=True)
-    release_date = models.DateTimeField("Tanggal Rilis", null=True, blank=True)
+    name = models.CharField(max_length=255, verbose_name="Nama Konten")
+    description = models.TextField(verbose_name="Deskripsi")
+    file_attachment = models.FileField("Lampiran File", null=True, blank=True)
+    course_id = models.ForeignKey(
+        "Course", verbose_name="Mata Kuliah", on_delete=models.RESTRICT
+    )
+    parent_id = models.ForeignKey(
+        "self", verbose_name="Induk Konten", on_delete=models.RESTRICT, null=True, blank=True
+    )
     scheduled_start_time = models.DateTimeField("Waktu Mulai", null=True, blank=True)
     scheduled_end_time = models.DateTimeField("Waktu Selesai", null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Dibuat Pada")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Diperbarui Pada")
 
     class Meta:
-        verbose_name = "Konten Matkul"
-        verbose_name_plural = "Konten Matkul"
+        verbose_name = "Konten Mata Kuliah"
+        verbose_name_plural = "Konten Mata Kuliah"
 
     def __str__(self):
-        return f'{self.course_id.name} - {self.name}'
+        # Menggunakan `course_id` untuk mengambil nama course
+        return f"{self.course_id.name if self.course_id else 'No Course'} - {self.name}"
 
     def is_available(self):
         now = timezone.now()
         if self.scheduled_start_time and self.scheduled_end_time:
             return self.scheduled_start_time <= now <= self.scheduled_end_time
+        if self.scheduled_start_time:
+            return now >= self.scheduled_start_time
+        if self.scheduled_end_time:
+            return now <= self.scheduled_end_time
         return True
 
 class Comment(models.Model):
