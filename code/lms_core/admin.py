@@ -123,19 +123,26 @@ class CustomUserAdmin(BaseUserAdmin):
 # Register Custom User Admin
 admin_site.register(User, CustomUserAdmin)
 
-class AnnouncementForm(forms.ModelForm):
+# Announcement Admin
+class AnnouncementAdminForm(forms.ModelForm):
     class Meta:
         model = Announcement
-        fields = ['title', 'content', 'start_date', 'end_date', 'course', 'created_by']
+        exclude = ['created_by'] 
         
 @admin.register(Announcement, site=admin_site)
 class AnnouncementAdmin(admin.ModelAdmin):
+    form = AnnouncementAdminForm
     list_display = ['title', 'course_name', 'start_date', 'end_date', 'created_by', 'created_at']
     list_filter = ['course_id', 'created_by']
     search_fields = ['title', 'content', 'course_id__name', 'created_by__username']
     readonly_fields = ['created_at', 'updated_at']
-    fields = ['title', 'content', 'start_date', 'end_date', 'course', 'created_by', 'created_at', 'updated_at']
+    fields = ['title', 'content', 'start_date', 'end_date', 'course', 'created_at', 'updated_at']
 
     def course_name(self, obj):
         return obj.course.name
     course_name.admin_order_field = 'course_id__name'
+
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by:
+            obj.created_by = request.user
+        obj.save()

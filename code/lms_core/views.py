@@ -202,13 +202,16 @@ def create_announcement(request, course_id):
             content = data.get('content')
             start_date = data.get('start_date')
             end_date = data.get('end_date')
-            user = request.user
+            
+            if not title or not content or not start_date or not end_date:
+                return JsonResponse({"error": "All fields are required"}, status=400)
 
+            user = request.user
             course = get_object_or_404(Course, id=course_id)
             if user != course.teacher:
                 return JsonResponse({"error": "Only the course teacher can create announcements"}, status=403)
 
-            Announcement.objects.create(
+            announcement = Announcement.objects.create(
                 course=course,
                 title=title,
                 content=content,
@@ -216,7 +219,7 @@ def create_announcement(request, course_id):
                 end_date=end_date,
                 created_by=user
             )
-            return JsonResponse({"message": "Announcement created successfully"}, status=201)
+            return JsonResponse({"message": "Announcement created successfully", "id": announcement.id}, status=201)
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON data"}, status=400)
     return JsonResponse({"error": "Invalid request method"}, status=405)
@@ -256,17 +259,20 @@ def edit_announcement(request, announcement_id):
             start_date = data.get('start_date')
             end_date = data.get('end_date')
 
+            if not title or not content or not start_date or not end_date:
+                return JsonResponse({"error": "All fields are required"}, status=400)
+
             announcement.title = title
             announcement.content = content
             announcement.start_date = start_date
             announcement.end_date = end_date
             announcement.save()
-            
+
             return JsonResponse({"message": "Announcement updated successfully"}, status=200)
-        
+
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON data"}, status=400)
-    
+
     return JsonResponse({"error": "Invalid request method"}, status=405)
 
 @csrf_exempt
