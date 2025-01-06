@@ -10,7 +10,7 @@ from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django import forms
 
-from lms_core.models import Course, Comment, CourseContent, CourseMember, Announcement
+from lms_core.models import Course, Comment, CourseContent, CourseMember, Announcement, Category
 
 def index(request):
     return HttpResponse("<h1>Hello World</h1>")
@@ -103,11 +103,6 @@ def course_analytics(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     stats = course.get_course_stats()
     return JsonResponse(stats)
-
-# def list_course_contents(request, course_id):
-#     contents = CourseContent.objects.filter(course_id=course_id, release_date__lte=timezone.now())
-#     data = serializers.serialize("json", contents)
-#     return JsonResponse(data, safe=False)
 
 def list_course_contents(request, course_id):
     contents = CourseContent.objects.filter(course_id=course_id, scheduled_start_time__lte=timezone.now())
@@ -288,6 +283,52 @@ def delete_announcement(request, announcement_id):
     if request.method == 'DELETE':
         announcement.delete()
         return JsonResponse({"message": "Announcement deleted successfully"}, status=200)
+
+    return JsonResponse({"error": "Invalid request method"}, status=405)
+
+@csrf_exempt
+def create_category(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            name = data.get('name')
+
+            if not name:
+                return JsonResponse({"error": "Category name is required"}, status=400)
+
+            category = Category.objects.create(
+                name=name,
+                created_by=request.user if request.user.is_authenticated else None
+            )
+
+            return JsonResponse({"message": "Category created successfully", "id": category.id}, status=201)
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data"}, status=400)
+    return JsonResponse({"error": "Invalid request method"}, status=405)
+
+def show_category(request):
+    categories = Category.objects.all()
+    data = [
+        {
+            "id": category.id,
+            "name": category.name,
+            "created_by": category.created_by.username,
+            "created_at": category.created_at,
+        } for category in categories
+    ]
+    return JsonResponse(data, safe=False)
+
+@csrf_exempt
+def delete_category(request, category_id):
+    try:
+        category = get_object_or_404(Category, id=category_id, created_by=request.user)
+    except Category.DoesNotExist:
+        return JsonResponse({"error": "Category not found"}, status=404)
+
+    if request.method == 'DELETE':
+        category.delete()
+        return JsonResponse({"message": "Category deleted successfully"}, status=200)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
 

@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.urls import path
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from lms_core.models import Course, CourseMember, CourseContent, Comment, Announcement
+from lms_core.models import Category, Course, CourseMember, CourseContent, Comment, Announcement
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
@@ -42,11 +42,11 @@ admin_site = MyAdminSite(name='myadmin')
 # Course Admin
 @admin.register(Course, site=admin_site)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ["name", "price", "description", "teacher", 'created_at']
-    list_filter = ["teacher"]
-    search_fields = ["name", "description", "teacher__username"]
+    list_display = ["name", "price", "description", "teacher", "category", "created_at"]
+    list_filter = ["teacher", "category"]
+    search_fields = ["name", "description", "teacher__username", "category__name"]
     readonly_fields = ["created_at", "updated_at"]
-    fields = ["name", "description", "price", "image", "teacher", "created_at", "updated_at"]
+    fields = ["name", "description", "price", "image", "teacher", "category", "created_at", "updated_at"]
 
 # CourseMember Admin
 @admin.register(CourseMember, site=admin_site)
@@ -146,3 +146,26 @@ class AnnouncementAdmin(admin.ModelAdmin):
         if not obj.created_by:
             obj.created_by = request.user
         obj.save()
+        
+# Category Admin
+class CategoryForm(forms.ModelForm):
+    class Meta:
+        model = Category
+        fields = ['name']
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if len(name) > 255:
+            raise forms.ValidationError("Nama kategori tidak boleh lebih dari 255 karakter.")
+        return name
+
+@admin.register(Category, site=admin_site)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'created_by', 'created_at']
+    readonly_fields = ['created_at']
+    exclude = ['created_by']
+
+    def save_model(self, request, obj, form, change):
+        if not obj.pk:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)

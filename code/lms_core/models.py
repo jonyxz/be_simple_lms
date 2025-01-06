@@ -10,6 +10,7 @@ class Course(models.Model):
     price = models.IntegerField("Harga")
     image = models.ImageField("Gambar", upload_to="course", blank=True, null=True)
     teacher = models.ForeignKey(User, verbose_name="Pengajar", on_delete=models.RESTRICT)
+    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, blank=True, related_name='courses')
     max_students = models.IntegerField("Jumlah Maksimal Siswa", default=30)  
     created_at = models.DateTimeField("Dibuat pada", auto_now_add=True)
     updated_at = models.DateTimeField("Diperbarui pada", auto_now=True)
@@ -152,3 +153,17 @@ class Announcement(models.Model):
         if self.end_date:
             return now <= self.end_date
         return True
+
+class Category(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    created_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="categories", null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Kategori"
+        verbose_name_plural = "Kategori"
