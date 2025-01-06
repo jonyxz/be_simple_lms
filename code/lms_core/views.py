@@ -1,13 +1,15 @@
+import json
 from django.shortcuts import render, HttpResponse, redirect, get_object_or_404
 from django.http import JsonResponse
-from lms_core.models import Course, Comment, CourseContent, ContentCompletion, CourseMember
+from django.core.exceptions import ObjectDoesNotExist
 from django.core import serializers
-from django.contrib.auth.models import User
-from django.views.decorators.csrf import csrf_exempt
-import json
 from django.utils import timezone
 from django.contrib import messages
+from django.contrib.auth.models import User
+from django.views.decorators.csrf import csrf_exempt
 from django import forms
+
+from lms_core.models import Course, Comment, CourseContent, CourseMember
 
 def index(request):
     return HttpResponse("<h1>Hello World</h1>")
@@ -107,23 +109,25 @@ def course_analytics(request, course_id):
 #     return JsonResponse(data, safe=False)
 
 def list_course_contents(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
-    contents = CourseContent.objects.filter(
-        course=course, scheduled_start_time__lte=timezone.now()
-    ).order_by('scheduled_start_time')
-
-    return JsonResponse({
-        "contents": [
-            {
-                "name": content.name,
-                "description": content.description,
-                "file_attachment": content.file_attachment.url if content.file_attachment else None,
-                "start_time": content.scheduled_start_time,
-                "end_time": content.scheduled_end_time,
-            }
-            for content in contents if content.is_available()
-        ]
-    })
+    contents = CourseContent.objects.filter(course_id=course_id, scheduled_start_time__lte=timezone.now())
+    
+    data = [
+        {
+            "id": content.id,
+            "name": content.name,
+            "description": content.description,
+            "scheduled_start_time": content.scheduled_start_time,
+            "scheduled_end_time": content.scheduled_end_time,
+            "is_available": content.is_available(),  
+            "course": {
+                "id": content.course_id.id,
+                "name": content.course_id.name,
+            },
+        }
+        for content in contents
+    ]
+    
+    return JsonResponse(data, safe=False)
 
 class BatchEnrollForm(forms.Form):
     course = forms.ModelChoiceField(queryset=Course.objects.all(), label="Course")
@@ -150,20 +154,40 @@ def batch_enroll(request):
 @csrf_exempt
 def enroll_student(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
-        course_id = data.get('course_id')
-        user_id = data.get('user_id')
+        try:
+            data = json.loads(request.body)
+            course_id = data.get('course_id')
+            user_id = data.get('user_id')
 
-        course = Course.objects.get(id=course_id)
-        user = User.objects.get(id=user_id)
+            if not course_id or not user_id:
+                return JsonResponse({"error": "Missing course_id or user_id"}, status=400)
 
-        if CourseMember.objects.filter(course_id=course, user_id=user).exists():
-            return JsonResponse({"error": "Student is already enrolled in this course"}, status=400)
+            try:
+                course = Course.objects.get(id=course_id)
+            except ObjectDoesNotExist:
+                return JsonResponse({"error": f"Course with id {course_id} does not exist"}, status=404)
 
-        if CourseMember.objects.filter(course_id=course).count() >= course.max_students:
-            return JsonResponse({"error": "Course is full"}, status=400)
+            try:
+                user = User.objects.get(id=user_id)
+            except ObjectDoesNotExist:
+                return JsonResponse({"error": f"User with id {user_id} does not exist"}, status=404)
 
-        CourseMember.objects.create(course_id=course, user_id=user)
-        return JsonResponse({"message": "Student enrolled successfully"}, status=201)
+            if CourseMember.objects.filter(course_id=course, user_id=user).exists():
+                return JsonResponse({"error": "Student is already enrolled in this course"}, status=400)
 
+            max_students = course.max_students
+            if max_students is not None: 
+                enrolled_count = CourseMember.objects.filter(course_id=course).count()
+                if enrolled_count >= max_students:
+                    return JsonResponse({"error": "Course is full"}, status=400)
+
+            CourseMember.objects.create(course_id=course, user_id=user)
+            return JsonResponse({"message": "Student enrolled successfully"}, status=201)
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data"}, status=400)
+        
+        except IntegrityError as e:
+            return JsonResponse({"error": f"Database error: {str(e)}"}, status=500)
+        
     return JsonResponse({"error": "Invalid request method"}, status=405)

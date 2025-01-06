@@ -77,7 +77,6 @@ class CourseContent(models.Model):
         verbose_name_plural = "Konten Mata Kuliah"
 
     def __str__(self):
-        # Menggunakan `course_id` untuk mengambil nama course
         return f"{self.course_id.name if self.course_id else 'No Course'} - {self.name}"
 
     def is_available(self):
@@ -116,7 +115,6 @@ class ContentCompletion(models.Model):
     def __str__(self):
         return f'{self.user.username} completed {self.content.name}'
 
-# Menambahkan method `get_course_stats` pada User
 User.add_to_class('get_course_stats', lambda self: {
     'courses_as_student': CourseMember.objects.filter(user_id=self, roles='std').count(),
     'courses_created': Course.objects.filter(teacher=self).count(),
