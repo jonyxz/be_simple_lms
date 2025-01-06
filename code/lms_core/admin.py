@@ -22,12 +22,17 @@ def batch_enroll(request):
         if form.is_valid():
             course = form.cleaned_data['course']
             students = form.cleaned_data['students']
+            enrolled_students = []
             for student in students:
+                # Avoid duplicate enrollments
                 if not CourseMember.objects.filter(course_id=course, user_id=student).exists():
-                    CourseMember.objects.get_or_create(course_id=course, user_id=student)
+                    CourseMember.objects.create(course_id=course, user_id=student)
+                    enrolled_students.append(student.username)
                 else:
-                    messages.warning(request, f"{student.username} is already enrolled.")
-            messages.success(request, "Students enrolled successfully")
+                    messages.warning(request, f"{student.username} is already enrolled in {course.name}.")
+            
+            if enrolled_students:
+                messages.success(request, f"Students enrolled successfully: {', '.join(enrolled_students)}")
             return redirect('admin:index')
         else:
             messages.error(request, "There was an issue with the form.")
@@ -77,11 +82,11 @@ class CourseMemberAdmin(admin.ModelAdmin):
 # CourseContent Admin
 @admin.register(CourseContent, site=admin_site)
 class CourseContentAdmin(admin.ModelAdmin):
-    list_display = ["name", "course_name", "release_date", "created_at"]
+    list_display = ["name", "course_name", "release_date", "scheduled_start_time", "scheduled_end_time", "created_at"]
     list_filter = ["course_id"]
     search_fields = ["name", "course_id__name"]
     readonly_fields = ["created_at", "updated_at"]
-    fields = ["name", "description", "file_attachment", "course_id", "parent_id", "release_date", "created_at", "updated_at"]
+    fields = ["name", "description", "file_attachment", "course_id", "parent_id", "release_date", "scheduled_start_time", "scheduled_end_time", "created_at", "updated_at"]
 
     def course_name(self, obj):
         return obj.course_id.name
@@ -91,8 +96,8 @@ class CourseContentAdmin(admin.ModelAdmin):
 @admin.register(Comment, site=admin_site)
 class CommentAdmin(admin.ModelAdmin):
     list_display = ["content_name", "user_name", "comment", "is_approved", "created_at"]
-    list_filter = ["content_id", "member_id", "is_approved"]
-    search_fields = ["comment", "member_id__user_id__username"]
+    list_filter = ["is_approved"]
+    search_fields = ["content_id__name", "member_id__user_id__username"]
     readonly_fields = ["created_at", "updated_at"]
     fields = ["content_id", "member_id", "comment", "is_approved", "created_at", "updated_at"]
 
@@ -103,6 +108,9 @@ class CommentAdmin(admin.ModelAdmin):
     def user_name(self, obj):
         return obj.member_id.user_id.username
     user_name.admin_order_field = 'member_id__user_id__username'
+
+# Register custom admin site
+admin.site = admin_site
 
 # Custom User Admin
 class CustomUserAdmin(BaseUserAdmin):
