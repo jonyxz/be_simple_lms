@@ -9,38 +9,24 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.contrib.auth.decorators import user_passes_test
 
-# Form untuk Batch Enroll
 class BatchEnrollForm(forms.Form):
     course = forms.ModelChoiceField(queryset=Course.objects.all(), label="Course")
     students = forms.ModelMultipleChoiceField(queryset=User.objects.filter(is_staff=False), label="Students")
 
-# View untuk Batch Enroll
-@user_passes_test(lambda u: u.is_staff)
 def batch_enroll(request):
     if request.method == 'POST':
         form = BatchEnrollForm(request.POST)
         if form.is_valid():
             course = form.cleaned_data['course']
             students = form.cleaned_data['students']
-            enrolled_students = []
             for student in students:
-                # Avoid duplicate enrollments
-                if not CourseMember.objects.filter(course_id=course, user_id=student).exists():
-                    CourseMember.objects.create(course_id=course, user_id=student)
-                    enrolled_students.append(student.username)
-                else:
-                    messages.warning(request, f"{student.username} is already enrolled in {course.name}.")
-            
-            if enrolled_students:
-                messages.success(request, f"Students enrolled successfully: {', '.join(enrolled_students)}")
+                CourseMember.objects.get_or_create(course_id=course, user_id=student)
+            messages.success(request, "Students enrolled successfully")
             return redirect('admin:index')
-        else:
-            messages.error(request, "There was an issue with the form.")
     else:
         form = BatchEnrollForm()
     return render(request, 'admin/batch_enroll.html', {'form': form})
 
-# Kelas Admin Kustom
 class MyAdminSite(admin.AdminSite):
     site_header = 'LMS Administration'
 

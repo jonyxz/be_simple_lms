@@ -52,7 +52,6 @@ class CourseMember(models.Model):
         return f"{self.course_id.name} : {self.user_id.username}"
 
     def clean(self):
-        # Pastikan seorang siswa tidak bisa mendaftar dua kali pada course yang sama
         if CourseMember.objects.filter(course_id=self.course_id, user_id=self.user_id).exists():
             raise ValidationError("Student is already enrolled in this course.")
         if self.course_id.is_full():
