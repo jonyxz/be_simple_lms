@@ -15,7 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.urls import path
-from lms_core.views import index, testing, addData, editData, deleteData, register, list_comments, user_activity_dashboard, course_analytics, list_course_contents, batch_enroll, moderate_comment, enroll_student
+from lms_core.views import index, testing, addData, editData, deleteData, register, list_comments, user_activity_dashboard, course_analytics, list_course_contents, batch_enroll, moderate_comment, enroll_student, create_announcement, show_announcements, edit_announcement, delete_announcement
 from lms_core.api import apiv1
 from lms_core.admin import admin_site
 
@@ -34,5 +34,10 @@ urlpatterns = [
     path('course_analytics/<int:course_id>/', course_analytics, name='course_analytics'),
     path('course_contents/<int:course_id>/', list_course_contents, name='list_course_contents'),
     path('course/enroll_student/', enroll_student, name='enroll_student'),
+    path('course/<int:course_id>/announcement/create/', create_announcement, name='create_announcement'),
+    path('course/<int:course_id>/announcement/show/', show_announcements, name='show_announcements'),
+    path('course/<int:course_id>/announcement/edit/<int:announcement_id>/', edit_announcement, name='edit_announcement'),
+    path('announcement/<int:announcement_id>/delete/', delete_announcement, name='delete_announcement'),
+
     path('', index),
 ]

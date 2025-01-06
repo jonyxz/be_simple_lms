@@ -1,7 +1,8 @@
 import json
+from sqlite3 import IntegrityError
 from django.shortcuts import render, HttpResponse, redirect, get_object_or_404
 from django.http import JsonResponse
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist,ValidationError
 from django.core import serializers
 from django.utils import timezone
 from django.contrib import messages
@@ -9,7 +10,7 @@ from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django import forms
 
-from lms_core.models import Course, Comment, CourseContent, CourseMember
+from lms_core.models import Course, Comment, CourseContent, CourseMember, Announcement
 
 def index(request):
     return HttpResponse("<h1>Hello World</h1>")
@@ -191,3 +192,96 @@ def enroll_student(request):
             return JsonResponse({"error": f"Database error: {str(e)}"}, status=500)
         
     return JsonResponse({"error": "Invalid request method"}, status=405)
+
+@csrf_exempt
+def create_announcement(request, course_id):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            title = data.get('title')
+            content = data.get('content')
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+            user = request.user
+
+            course = get_object_or_404(Course, id=course_id)
+            if user != course.teacher:
+                return JsonResponse({"error": "Only the course teacher can create announcements"}, status=403)
+
+            Announcement.objects.create(
+                course=course,
+                title=title,
+                content=content,
+                start_date=start_date,
+                end_date=end_date,
+                created_by=user
+            )
+            return JsonResponse({"message": "Announcement created successfully"}, status=201)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data"}, status=400)
+    return JsonResponse({"error": "Invalid request method"}, status=405)
+
+def show_announcements(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    announcements = Announcement.objects.filter(course=course)
+    active_announcements = [
+        {
+            "id": announcement.id,
+            "title": announcement.title,
+            "content": announcement.content,
+            "start_date": announcement.start_date,
+            "end_date": announcement.end_date,
+            "is_active": announcement.is_active(),
+        }
+        for announcement in announcements if announcement.is_active()
+    ]
+    return JsonResponse(active_announcements, safe=False)
+
+@csrf_exempt
+def edit_announcement(request, announcement_id):
+    try:
+        announcement = get_object_or_404(Announcement, id=announcement_id)
+    except Announcement.DoesNotExist:
+        return JsonResponse({"error": "Announcement not found"}, status=404)
+
+    if request.user != announcement.created_by:
+        return JsonResponse({"error": "Only the course teacher can edit announcements"}, status=403)
+
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            title = data.get('title')
+            content = data.get('content')
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+
+            announcement.title = title
+            announcement.content = content
+            announcement.start_date = start_date
+            announcement.end_date = end_date
+            announcement.save()
+            
+            return JsonResponse({"message": "Announcement updated successfully"}, status=200)
+        
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data"}, status=400)
+    
+    return JsonResponse({"error": "Invalid request method"}, status=405)
+
+@csrf_exempt
+def delete_announcement(request, announcement_id):
+    try:
+        announcement = get_object_or_404(Announcement, id=announcement_id)
+    except Announcement.DoesNotExist:
+        return JsonResponse({"error": "Announcement not found"}, status=404)
+
+    if request.user != announcement.created_by:
+        return JsonResponse({"error": "Only the course teacher can delete announcements"}, status=403)
+
+    if request.method == 'DELETE':
+        announcement.delete()
+        return JsonResponse({"message": "Announcement deleted successfully"}, status=200)
+
+    return JsonResponse({"error": "Invalid request method"}, status=405)
+

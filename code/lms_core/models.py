@@ -121,3 +121,34 @@ User.add_to_class('get_course_stats', lambda self: {
     'comments_written': Comment.objects.filter(member_id__user_id=self).count(),
     'contents_completed': ContentCompletion.objects.filter(user=self).count(),
 })
+
+class Announcement(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="announcements")
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="announcements_created")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
+
+    def is_active(self):
+        now = timezone.now()
+        return self.start_date <= now <= self.end_date
+
+    class Meta:
+        verbose_name = "Pengumuman"
+        verbose_name_plural = "Pengumuman"
+
+    def is_available(self):
+        now = timezone.now()
+        if self.start_date and self.end_date:
+            return self.start_date <= now <= self.end_date
+        if self.start_date:
+            return now >= self.start_date
+        if self.end_date:
+            return now <= self.end_date
+        return True

@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.urls import path
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from lms_core.models import Course, CourseMember, CourseContent, Comment
+from lms_core.models import Course, CourseMember, CourseContent, Comment, Announcement
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
@@ -122,3 +122,20 @@ class CustomUserAdmin(BaseUserAdmin):
 
 # Register Custom User Admin
 admin_site.register(User, CustomUserAdmin)
+
+class AnnouncementForm(forms.ModelForm):
+    class Meta:
+        model = Announcement
+        fields = ['title', 'content', 'start_date', 'end_date', 'course', 'created_by']
+        
+@admin.register(Announcement, site=admin_site)
+class AnnouncementAdmin(admin.ModelAdmin):
+    list_display = ['title', 'course_name', 'start_date', 'end_date', 'created_by', 'created_at']
+    list_filter = ['course_id', 'created_by']
+    search_fields = ['title', 'content', 'course_id__name', 'created_by__username']
+    readonly_fields = ['created_at', 'updated_at']
+    fields = ['title', 'content', 'start_date', 'end_date', 'course', 'created_by', 'created_at', 'updated_at']
+
+    def course_name(self, obj):
+        return obj.course.name
+    course_name.admin_order_field = 'course_id__name'
